@@ -8,6 +8,7 @@ using SharpDX;
 using LeagueSharp;
 using LeagueSharp.Common;
 using LeagueSharp.Common.Data;
+using ItemData = LeagueSharp.Common.Data.ItemData;
 using Predictions;
 
 namespace Viktor
