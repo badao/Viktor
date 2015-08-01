@@ -9,7 +9,6 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using LeagueSharp.Common.Data;
 using ItemData = LeagueSharp.Common.Data.ItemData;
-using Predictions;
 
 namespace Viktor
 {
@@ -36,7 +35,7 @@ namespace Viktor
             _w = new Spell(SpellSlot.W,700);
             _e = new Spell(SpellSlot.E);
             _r = new Spell(SpellSlot.R,700);
-            _r.SetSkillshot(0.25f,200,float.MaxValue,false,SkillshotType.SkillshotCircle);
+            _r.SetSkillshot(0.25f, 1,float.MaxValue,false,SkillshotType.SkillshotCircle);
             _w.SetSkillshot(0.25f, 325, float.MaxValue, false, SkillshotType.SkillshotCircle);
             E = new Spells(SpellSlot.E, SkillshotType.SkillshotLine, 520, (float)0.25, 40, false, 780, 500);
             //R = new Spells(SpellSlot.R, SkillshotType.SkillshotCircle, 700, 0.25f, 325 / 2, false);
