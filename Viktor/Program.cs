@@ -153,7 +153,11 @@ namespace Viktor
             var target = TargetSelector.GetTarget(_w.Range, TargetSelector.DamageType.Magical);
             if ( target.IsValidTarget() && !target.IsZombie && _w.IsReady())
             {
-                _w.Cast(target);
+                var pos = Prediction.GetPrediction(target, 0.25f).UnitPosition;
+                if (Player.Distance(pos) <= _w.Range)
+                {
+                    _w.Cast(pos);
+                }
             }
         }
         private static void ViktorRMove()
