@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,8 +17,8 @@ namespace Viktor
     {
         private static Obj_AI_Hero Player { get { return ObjectManager.Player; } }
         private static Orbwalking.Orbwalker _orbwalker;
-        private static Spell _q, _e, _r;
-        private static Spells E, R;
+        private static Spell _q, _w, _e, _r;
+        private static Spells E;
         private static Menu _menu;
         private static GameObject ViktorR = null;
 
@@ -33,10 +33,13 @@ namespace Viktor
                 return;
 
             _q = new Spell(SpellSlot.Q);
+            _w = new Spell(SpellSlot.W,700);
             _e = new Spell(SpellSlot.E);
-            _r = new Spell(SpellSlot.R);
+            _r = new Spell(SpellSlot.R,700);
+            _r.SetSkillshot(0.25f,200,float.MaxValue,false,SkillshotType.SkillshotCircle);
+            _w.SetSkillshot(0.25f, 325, float.MaxValue, false, SkillshotType.SkillshotCircle);
             E = new Spells(SpellSlot.E, SkillshotType.SkillshotLine, 520, (float)0.25, 40, false, 780, 500);
-            R = new Spells(SpellSlot.R, SkillshotType.SkillshotCircle, 700, 0.25f, 325 / 2, false);
+            //R = new Spells(SpellSlot.R, SkillshotType.SkillshotCircle, 700, 0.25f, 325 / 2, false);
 
             _menu = new Menu(Player.ChampionName, Player.ChampionName, true);
             Menu orbwalkerMenu = new Menu("Orbwalker", "Orbwalker");
@@ -54,20 +57,33 @@ namespace Viktor
             Harass.AddItem(new MenuItem("Use E Harass", "Use E Harass").SetValue(true));
             Combo.AddItem(new MenuItem("Use Q Combo", "Use Q Combo").SetValue(true));
             Combo.AddItem(new MenuItem("Use E Combo", "Use E Combo").SetValue(true));
-            Combo.AddItem(new MenuItem("Use R Burst Selected", "Use R Burst Selected").SetValue(true));
+            Combo.AddItem(new MenuItem("Use W Combo", "Use W Combo").SetValue(true));
+            Combo.AddItem(new MenuItem("Use R Burst Selected", "Use R Combo").SetValue(true));
             Focus.AddItem(new MenuItem("force focus selected", "force focus selected").SetValue(false));
             Focus.AddItem(new MenuItem("if selected in :", "if selected in :").SetValue(new Slider(1000, 1000, 1500)));
             KS.AddItem(new MenuItem("Use Q KillSteal", "Use Q KillSteal").SetValue(true));
             KS.AddItem(new MenuItem("Use E KillSteal", "Use E KillSteal").SetValue(true));
             KS.AddItem(new MenuItem("Use R KillSteal", "Use R KillSteal").SetValue(true));
             spellMenu.AddItem(new MenuItem("Use R Follow", "Use R Follow").SetValue(true));
+            spellMenu.AddItem(new MenuItem("Use W GapCloser", "Use W anti gap").SetValue(true));
 
             _menu.AddToMainMenu();
 
             Game.OnUpdate += Game_OnGameUpdate;
             GameObject.OnCreate += Create;
             GameObject.OnDelete += Delete;
+            AntiGapcloser.OnEnemyGapcloser += AntiGapcloser_OnEnemyGapcloser;
             Game.PrintChat("Welcome to ViktorWorld");
+        }
+
+        private static void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        {
+            if (_menu.Item("Use W GapCloser").GetValue<bool>() && _w.IsReady() && gapcloser.Sender.IsValidTarget(_w.Range))
+            {
+                var pos = gapcloser.End;
+                if (Player.Distance(pos) <= _w.Range)
+                    _w.Cast(pos);
+            }
         }
         private static void Create(GameObject sender, EventArgs args)
         {
@@ -113,7 +129,11 @@ namespace Viktor
                 {
                     UseE();
                 }
-                if (_menu.Item("Use R Combo Selected").GetValue<bool>())
+                if (_menu.Item("Use W Combo").GetValue<bool>())
+                {
+                    UseW();
+                }
+                if (_menu.Item("Use R Burst Selected").GetValue<bool>())
                 {
                     UseR();
                 }
@@ -128,14 +148,23 @@ namespace Viktor
             ViktorRMove();
             killsteal();
         }
+
+        private static void UseW()
+        {
+            var target = TargetSelector.GetTarget(_w.Range, TargetSelector.DamageType.Magical);
+            if ( target.IsValidTarget() && !target.IsZombie && _w.IsReady())
+            {
+                _w.Cast(target);
+            }
+        }
         private static void ViktorRMove()
         {
             if (_menu.Item("Use R Follow").GetValue<bool>() && ViktorR != null && _r.IsReady())
             {
-                var target = ViktorR.Position.GetEnemiesInRange(2000).OrderByDescending(t => 1 - t.Distance(ViktorR.Position)).FirstOrDefault();
+                var target = ViktorR.Position.GetEnemiesInRange(2000).Where(t => t.IsValidTarget() && !t.IsZombie).OrderByDescending(t => 1 - t.Distance(ViktorR.Position)).FirstOrDefault();
                 if (target.Distance(ViktorR.Position) >= 50)
                 {
-                    Vector3 x = Prediction.GetPrediction(target, 150).UnitPosition;
+                    Vector3 x = Prediction.GetPrediction(target,0.5f).UnitPosition;
                     _r.Cast(x);
                 }
             }
@@ -172,17 +201,30 @@ namespace Viktor
 
         private static void UseR()
         {
-            var target = TargetSelector.GetSelectedTarget();
-            if (target != null && Player.Distance(target.Position) <= 950 && target.IsValidTarget() && !target.IsZombie && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm")
             {
-                CastR(target);
+                var target = TargetSelector.GetSelectedTarget();
+                if (target != null && Player.Distance(target.Position) <= 950 && target.IsValidTarget() && !target.IsZombie && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm")
+                {
+                    CastR(target);
+                }
+            }
+            {
+                var target = TargetSelector.GetTarget(_r.Range, TargetSelector.DamageType.Magical);
+                if (target != null && target.IsValidTarget() && !target.IsZombie && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm" )
+                {
+                    if (target.Health <= _r.GetDamage(target)*1.7)
+                    {
+                        _r.Cast(target);
+                    }
+                    _r.CastIfWillHit(target, 2);
+                }
             }
         }
 
         private static void CastR(Obj_AI_Base target)
         {
 
-            R.Cast(target);
+            _r.Cast(target);
         }
 
         private static void UseE()
@@ -229,15 +271,15 @@ namespace Viktor
                     {
                         if (dmgE > hero.Health && dmgR > hero.Health)
                         {
-                            if (E.Instance.Cooldown - E.Instance.CooldownExpires >= 450 && !E.IsReady())
-                                R.Cast(hero);
+                            if (!E.IsReady())
+                                _r.Cast(hero);
                         }
                         else if (dmgQ > hero.Health && dmgR > hero.Health && Player.Distance(hero.Position) <= 600)
                         {
-                            if (_q.Instance.Cooldown - _q.Instance.CooldownExpires >= 450 && !_q.IsReady() && !E.IsReady())
-                                R.Cast(hero);
+                            if (!_q.IsReady() && !E.IsReady())
+                                _r.Cast(hero);
                         }
-                        else if (dmgR > hero.Health) { R.Cast(hero); }
+                        else if (dmgR > hero.Health) { _r.Cast(hero); }
                     }
                 }
             }
