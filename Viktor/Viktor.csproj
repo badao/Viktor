@@ -41,9 +41,6 @@
     <Reference Include="LeagueSharp.Common">
       <HintPath>D:\LeagueSharp\LeagueSharp\System\LeagueSharp.Common.dll</HintPath>
     </Reference>
-    <Reference Include="Predictions">
-      <HintPath>D:\LeagueSharp\LeagueSharp\System\Predictions.dll</HintPath>
-    </Reference>
     <Reference Include="SharpDX">
       <HintPath>D:\LeagueSharp\LeagueSharp\System\SharpDX.dll</HintPath>
     </Reference>
