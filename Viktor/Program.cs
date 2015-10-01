@@ -197,6 +197,8 @@ namespace Viktor
 
         private static void UseQ()
         {
+            if (!_q.IsReady())
+                return;
             var target = Gettarget(600);
             if (target != null && target.IsValidTarget() && !target.IsZombie && _q.IsReady())
                 _q.Cast(target);
@@ -204,40 +206,63 @@ namespace Viktor
 
         private static void UseR()
         {
+            if (!_r.IsReady())
+                return;
+            if (_r.IsReady() && _r.Instance.Name == "ViktorChaosStorm")
             {
-                var target = TargetSelector.GetSelectedTarget();
-                if (target != null && Player.Distance(target.Position) <= 950 && target.IsValidTarget() && !target.IsZombie && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm")
                 {
-                    CastR(target);
-                }
-            }
-            {
-                var target = TargetSelector.GetTarget(_r.Range, TargetSelector.DamageType.Magical);
-                if (target != null && target.IsValidTarget() && !target.IsZombie && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm" )
-                {
-                    if (target.Health <= _r.GetDamage(target)*1.7)
+                    var target = TargetSelector.GetSelectedTarget();
+                    if (target != null && Player.Distance(target.Position) <= 1000 && target.IsValidTarget() && !target.IsZombie && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm")
                     {
-                        _r.Cast(target);
+                        CastR(target);
                     }
-                    _r.CastIfWillHit(target, 2);
+                }
+                {
+                    var target = TargetSelector.GetTarget(1000, TargetSelector.DamageType.Magical);
+                    if (target != null && target.IsValidTarget() && !target.IsZombie && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm" )
+                    {
+                        if (target.Health <= _r.GetDamage(target)*1.7)
+                        {
+                            CastR(target);
+                        }
+                    }
+                    foreach(var hero in HeroManager.Enemies.Where(x=> x.IsValidTarget(1000) && !x.IsZombie))
+                    {
+
+                    }
                 }
             }
         }
 
         private static void CastR(Obj_AI_Base target)
         {
-
-            _r.Cast(target);
+            if (!target.IsValidTarget() || target.IsZombie)
+                return;
+            var predpos = Prediction.GetPrediction(target, 0.25f).UnitPosition.To2D();
+            if (predpos.Distance(Player.Position.To2D()) <= 1000 )
+            {
+                var castpos = predpos.Distance(Player.Position.To2D()) > 700 ?
+                    Player.Position.To2D().Extend(predpos, 700) :
+                    predpos;
+                _r.Cast(predpos);
+            }
         }
 
         private static void UseE()
         {
+            if (!_e.IsReady())
+                return;
             var target = Gettarget(1025);
             if (target != null && target.IsValidTarget() && !target.IsZombie && _e.IsReady())
             {
 
                 Vector3 x = Player.Distance(target.Position) >= 525 ? Player.Position.Extend(target.Position, 525) : target.Position;
                 E.Cast(true, x, target);
+            }
+            foreach (var hero in HeroManager.Enemies.Where(x => x.IsValidTarget() &&!x.IsZombie))
+            {
+                Vector3 x = Player.Distance(hero.Position) >= 525 ? Player.Position.Extend(hero.Position, 525) : hero.Position;
+                E.Cast(true, x, hero);
             }
         }
         public static void killsteal()
@@ -275,12 +300,12 @@ namespace Viktor
                         if (dmgE > hero.Health && dmgR > hero.Health)
                         {
                             if (!E.IsReady())
-                                _r.Cast(hero);
+                                CastR(hero);
                         }
                         else if (dmgQ > hero.Health && dmgR > hero.Health && Player.Distance(hero.Position) <= 600)
                         {
                             if (!_q.IsReady() && !E.IsReady())
-                                _r.Cast(hero);
+                                CastR(hero);
                         }
                         else if (dmgR > hero.Health) { _r.Cast(hero); }
                     }
