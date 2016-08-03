@@ -17,7 +17,6 @@ namespace Viktor
         private static Obj_AI_Hero Player { get { return ObjectManager.Player; } }
         private static Orbwalking.Orbwalker _orbwalker;
         private static Spell _q, _w, _e, _r;
-        private static Spells E;
         private static Menu _menu;
         private static GameObject ViktorR = null;
 
@@ -31,13 +30,14 @@ namespace Viktor
             if (Player.ChampionName != "Viktor")
                 return;
 
-            _q = new Spell(SpellSlot.Q);
+            _q = new Spell(SpellSlot.Q , 650);
             _w = new Spell(SpellSlot.W,700);
-            _e = new Spell(SpellSlot.E);
+            _e = new Spell(SpellSlot.E,700);
             _r = new Spell(SpellSlot.R,700);
             _r.SetSkillshot(0.25f, 325,float.MaxValue,false,SkillshotType.SkillshotCircle);
             _w.SetSkillshot(0.25f, 325, float.MaxValue, false, SkillshotType.SkillshotCircle);
-            E = new Spells(SpellSlot.E, SkillshotType.SkillshotLine, 520, (float)0.25, 40, false, 780, 500);
+            _e.SetSkillshot(0.25f, 80, 1050, false, SkillshotType.SkillshotLine);
+            _e.MinHitChance = HitChance.Medium;
             //R = new Spells(SpellSlot.R, SkillshotType.SkillshotCircle, 700, 0.25f, 325 / 2, false);
 
             _menu = new Menu(Player.ChampionName, Player.ChampionName, true);
@@ -102,16 +102,15 @@ namespace Viktor
         {
             if (Player.IsDead)
                 return;
+            //Game.PrintChat(Player.Position.Distance(Game.CursorPos).ToString());
             if (_orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.Combo || (_orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.Mixed && Selected()))
             {
-                if (_q.IsReady() && Player.Mana >= _q.Instance.ManaCost)
+                if (_q.IsReady())
                 {
                     _orbwalker.SetAttack(false);
                 }
-                if (!_q.IsReady() || _q.IsReady() && Player.Mana < _q.Instance.ManaCost)
-                {
+                else
                     _orbwalker.SetAttack(true);
-                }
             }
             else
             {
@@ -199,8 +198,8 @@ namespace Viktor
         {
             if (!_q.IsReady())
                 return;
-            var target = Gettarget(600);
-            if (target != null && target.IsValidTarget() && !target.IsZombie && _q.IsReady())
+            var target = Gettarget(650);
+            if (target != null && target.IsValidTarget(650) && !target.IsZombie && _q.IsReady())
                 _q.Cast(target);
         }
 
@@ -248,28 +247,77 @@ namespace Viktor
             }
         }
 
-        private static void UseE()
+        private static void UseE(Obj_AI_Base  ForceTarget = null)
         {
             if (!_e.IsReady())
                 return;
-            var target = Gettarget(1025);
-            if (target != null && target.IsValidTarget() && !target.IsZombie && _e.IsReady())
+            var target = Gettarget(525 + 700);
+            if (ForceTarget != null)
+                target = ForceTarget;
+            if (target != null && target.IsValidTarget(1025) && !target.IsZombie && _e.IsReady())
             {
-
-                Vector3 x = Player.Distance(target.Position) >= 525 ? Player.Position.Extend(target.Position, 525) : target.Position;
-                E.Cast(true, x, target);
+                Obj_AI_Hero startHeroPos = HeroManager.Enemies.Where(x => x.IsValidTarget(525) && x.NetworkId != target.NetworkId && x.Distance(target) <= 700).MinOrDefault(x => x.Health);
+                Obj_AI_Hero startHeroExtend = HeroManager.Enemies.Where(x => x.IsValidTarget() && x.NetworkId != target.NetworkId && x.Distance (target) <= 700
+                    && target.Position.To2D().Extend(x.Position.To2D(), 700).Distance(Player.Position) <= 525).MinOrDefault(x => x.Health);
+                Obj_AI_Hero endHeroPos = HeroManager.Enemies.Where(x => x.IsValidTarget(525 + 700) && x.NetworkId != target.NetworkId && target.IsValidTarget(525)
+                    && x.Distance(target) <= 700).MinOrDefault(x => x.Health);
+                Obj_AI_Hero endHeroExtend = HeroManager.Enemies.Where(x => x.IsValidTarget(1025) && x.NetworkId != target.NetworkId
+                    && x.Distance(target) <= 700 && x.Position.To2D().Extend(target.Position.To2D(),700).Distance(Player.Position) <= 525).MinOrDefault(x => x.Health);
+                Vector3 DefaultPos = Player.Distance(target.Position) >= 525 ? Player.Position.To2D().Extend(target.Position.To2D(), 525).To3D() : target.Position;
+                if (startHeroPos != null)
+                {
+                    _e.SetSkillshot(0.25f, 80, 1050, false, SkillshotType.SkillshotLine, startHeroPos.Position, startHeroPos.Position);
+                    CastE(target);
+                }
+                else if (startHeroExtend != null)
+                {
+                    //float r = 525;
+                    //float d = target.Distance(Player);
+                    //float h = Geometry.Distance(Player.Position.To2D(), target.Position.To2D(), startHeroExtend.Position.To2D());
+                    //float a = (float)Math.Sqrt(d * d - h * h);
+                    //float b = (float)Math.Sqrt(r * r - h * h);
+                    //float c = a - b;
+                    _e.SetSkillshot(0.25f, 80, 1050, false, SkillshotType.SkillshotLine, target.Position.To2D().Extend(startHeroExtend.Position.To2D(), 700).To3D(), target.Position.To2D().Extend(startHeroExtend.Position.To2D(), 700).To3D());
+                    CastE(target);
+                }
+                else if (endHeroPos != null)
+                {
+                    _e.SetSkillshot(0.25f, 80, 1050, false, SkillshotType.SkillshotLine, target.Position, target.Position);
+                    CastE(endHeroPos);
+                }
+                else if(endHeroExtend != null)
+                {
+                    //float r = 525;
+                    //float d = endHeroExtend.Distance(Player);
+                    //float h = Geometry.Distance(Player.Position.To2D(), target.Position.To2D(), endHeroExtend.Position.To2D());
+                    //float a = (float)Math.Sqrt(d * d - h * h);
+                    //float b = (float)Math.Sqrt(r * r - h * h);
+                    //float c = a - b;
+                    _e.SetSkillshot(0.25f, 80, 1050, false, SkillshotType.SkillshotLine, endHeroExtend.Position.To2D().Extend(target.Position.To2D(), 700).To3D(), endHeroExtend.Position.To2D().Extend(target.Position.To2D(), 700).To3D());
+                    CastE(endHeroExtend);
+                }
+                else
+                {
+                    _e.SetSkillshot(0.25f, 80, 1050, false, SkillshotType.SkillshotLine, DefaultPos, DefaultPos);
+                    CastE(target);
+                }
             }
-            foreach (var hero in HeroManager.Enemies.Where(x => x.IsValidTarget() &&!x.IsZombie))
+        }
+        public static void CastE(Obj_AI_Base target)
+        {
+            if (target == null)
+                return;
+            var pred = _e.GetPrediction(target);
+            if (pred.Hitchance >= HitChance.Medium)
             {
-                Vector3 x = Player.Distance(hero.Position) >= 525 ? Player.Position.Extend(hero.Position, 525) : hero.Position;
-                E.Cast(true, x, hero);
+                _e.Cast(_e.RangeCheckFrom, pred.CastPosition);
             }
         }
         public static void killsteal()
         {
             if (_q.IsReady() && _menu.Item("Use Q KillSteal").GetValue<bool>() && !Player.IsWindingUp)
             {
-                foreach (var hero in ObjectManager.Get<Obj_AI_Hero>().Where(hero => hero.IsEnemy && hero.IsValidTarget(600)))
+                foreach (var hero in ObjectManager.Get<Obj_AI_Hero>().Where(hero => hero.IsEnemy && hero.IsValidTarget(650)))
                 {
                     var dmg = Dame(hero, SpellSlot.Q);
                     if (hero != null && hero.IsValidTarget() && !hero.IsZombie && dmg > hero.Health) { _q.Cast(hero); }
@@ -282,8 +330,7 @@ namespace Viktor
                     var dmg = Dame(hero, SpellSlot.E);
                     if (hero != null && hero.IsValidTarget() && !hero.IsZombie && dmg > hero.Health)
                     {
-                        Vector3 x = Player.Distance(hero.Position) >= 525 ? Player.Position.Extend(hero.Position, 525) : hero.Position;
-                        E.Cast(true, x, hero);
+                        UseE(hero);
                     }
                 }
             }
@@ -299,12 +346,12 @@ namespace Viktor
                     {
                         if (dmgE > hero.Health && dmgR > hero.Health)
                         {
-                            if (!E.IsReady())
+                            if (!_e.IsReady())
                                 CastR(hero);
                         }
                         else if (dmgQ > hero.Health && dmgR > hero.Health && Player.Distance(hero.Position) <= 600)
                         {
-                            if (!_q.IsReady() && !E.IsReady())
+                            if (!_q.IsReady() && !_e.IsReady())
                                 CastR(hero);
                         }
                         else if (dmgR > hero.Health) { _r.Cast(hero); }
