@@ -15,10 +15,10 @@ namespace Viktor
     static class Program
     {
         private static Obj_AI_Hero Player { get { return ObjectManager.Player; } }
-        private static Orbwalking.Orbwalker _orbwalker;
-        private static Spell _q, _w, _e, _r;
-        private static Menu _menu;
-        private static GameObject ViktorR = null;
+        public static Orbwalking.Orbwalker _orbwalker;
+        public static Spell _q, _w, _e, _r;
+        public static Menu _menu;
+        public static GameObject ViktorR = null;
 
         static void Main(string[] args)
         {
@@ -50,19 +50,27 @@ namespace Viktor
             Menu spellMenu = _menu.AddSubMenu(new Menu("Spells", "Spells"));
             Menu Harass = spellMenu.AddSubMenu(new Menu("Harass", "Harass"));
             Menu Combo = spellMenu.AddSubMenu(new Menu("Combo", "Combo"));
+            Menu Flee = spellMenu.AddSubMenu(new Menu("Flee", "Flee"));
             Menu Focus = spellMenu.AddSubMenu(new Menu("Focus Selected", "Focus Selected"));
             Menu KS = spellMenu.AddSubMenu(new Menu("KillSteal", "KillSteal"));
+            Menu Draw = spellMenu.AddSubMenu(new Menu("Draw", "Draw"));
             Harass.AddItem(new MenuItem("Use Q Harass", "Use Q Harass").SetValue(true));
             Harass.AddItem(new MenuItem("Use E Harass", "Use E Harass").SetValue(true));
             Combo.AddItem(new MenuItem("Use Q Combo", "Use Q Combo").SetValue(true));
             Combo.AddItem(new MenuItem("Use E Combo", "Use E Combo").SetValue(true));
             Combo.AddItem(new MenuItem("Use W Combo", "Use W Combo").SetValue(true));
             Combo.AddItem(new MenuItem("Use R Burst Selected", "Use R Combo").SetValue(true));
+            Combo.AddItem(new MenuItem("Use R Always", "Use R Always").SetValue(true));
+            Flee.AddItem(new MenuItem("Flee Key", "Flee Key").SetValue(new KeyBind('T', KeyBindType.Press)));
             Focus.AddItem(new MenuItem("force focus selected", "force focus selected").SetValue(false));
             Focus.AddItem(new MenuItem("if selected in :", "if selected in :").SetValue(new Slider(1000, 1000, 1500)));
             KS.AddItem(new MenuItem("Use Q KillSteal", "Use Q KillSteal").SetValue(true));
             KS.AddItem(new MenuItem("Use E KillSteal", "Use E KillSteal").SetValue(true));
             KS.AddItem(new MenuItem("Use R KillSteal", "Use R KillSteal").SetValue(true));
+            Draw.AddItem(new MenuItem("DQ", "Draw Q").SetValue(true));
+            Draw.AddItem(new MenuItem("DW", "Draw W").SetValue(true));
+            Draw.AddItem(new MenuItem("DE", "Draw E").SetValue(true));
+            Draw.AddItem(new MenuItem("DR", "Draw R").SetValue(true));
             spellMenu.AddItem(new MenuItem("Use R Follow", "Use R Follow").SetValue(true));
             spellMenu.AddItem(new MenuItem("Use W GapCloser", "Use W anti gap").SetValue(true));
 
@@ -72,7 +80,31 @@ namespace Viktor
             GameObject.OnCreate += Create;
             GameObject.OnDelete += Delete;
             AntiGapcloser.OnEnemyGapcloser += AntiGapcloser_OnEnemyGapcloser;
+            Drawing.OnDraw += Drawing_OnDraw;
+            Viktor.Flee.BadaoActivate();
             Game.PrintChat("Welcome to ViktorWorld");
+        }
+
+        private static void Drawing_OnDraw(EventArgs args)
+        {
+            if (Player.IsDead)
+                return;
+            if (_menu.Item("DQ").GetValue<bool>())
+            {
+                Render.Circle.DrawCircle(Player.Position, _q.Range, Color.Green);
+            }
+            if (_menu.Item("DE").GetValue<bool>())
+            {
+                Render.Circle.DrawCircle(Player.Position, _e.Range + 550, Color.Orange);
+            }
+            if (_menu.Item("DW").GetValue<bool>())
+            {
+                Render.Circle.DrawCircle(Player.Position, _w.Range, Color.Yellow);
+            }
+            if (_menu.Item("DR").GetValue<bool>())
+            {
+                Render.Circle.DrawCircle(Player.Position, _r.Range, Color.Pink);
+            }
         }
 
         private static void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
@@ -135,6 +167,12 @@ namespace Viktor
                 {
                     UseR();
                 }
+                if (_menu.Item("Use R Always").GetValue<bool>())
+                {
+                    var target = Gettarget(850);
+                    if (target.IsValidTarget() && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm")
+                        CastR(target);
+                }
             }
             if (_orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.Mixed)
             {
@@ -147,7 +185,7 @@ namespace Viktor
             killsteal();
         }
 
-        private static void UseW()
+        public static void UseW()
         {
             var target = TargetSelector.GetTarget(_w.Range, TargetSelector.DamageType.Magical);
             if ( target.IsValidTarget() && !target.IsZombie && _w.IsReady())
@@ -194,7 +232,7 @@ namespace Viktor
             return Selected() ? TargetSelector.GetSelectedTarget() : TargetSelector.GetTarget(range, TargetSelector.DamageType.Magical);
         }
 
-        private static void UseQ()
+        public static void UseQ()
         {
             if (!_q.IsReady())
                 return;
