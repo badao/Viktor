@@ -60,7 +60,11 @@ namespace Viktor
             Combo.AddItem(new MenuItem("Use E Combo", "Use E Combo").SetValue(true));
             Combo.AddItem(new MenuItem("Use W Combo", "Use W Combo").SetValue(true));
             Combo.AddItem(new MenuItem("Use R Burst Selected", "Use R Combo").SetValue(true));
-            Combo.AddItem(new MenuItem("Use R Always", "Use R Always").SetValue(true));
+            foreach (var hero in HeroManager.Enemies)
+            {
+                Combo.AddItem(new MenuItem("CR" + hero.NetworkId, hero.ChampionName + "(" + hero.Name + ")").SetValue(true));
+                Combo.AddItem(new MenuItem("CRH" + hero.NetworkId, "% HP").SetValue(new Slider(40, 0, 100)));
+            }
             Flee.AddItem(new MenuItem("Flee Key", "Flee Key").SetValue(new KeyBind('T', KeyBindType.Press)));
             Focus.AddItem(new MenuItem("force focus selected", "force focus selected").SetValue(false));
             Focus.AddItem(new MenuItem("if selected in :", "if selected in :").SetValue(new Slider(1000, 1000, 1500)));
@@ -167,12 +171,6 @@ namespace Viktor
                 {
                     UseR();
                 }
-                if (_menu.Item("Use R Always").GetValue<bool>())
-                {
-                    var target = Gettarget(850);
-                    if (target.IsValidTarget() && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm")
-                        CastR(target);
-                }
             }
             if (_orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.Mixed)
             {
@@ -247,25 +245,11 @@ namespace Viktor
                 return;
             if (_r.IsReady() && _r.Instance.Name == "ViktorChaosStorm")
             {
+                foreach (var hero in HeroManager.Enemies.Where(x => x.IsValidTarget(1000)))
                 {
-                    var target = TargetSelector.GetSelectedTarget();
-                    if (target != null && Player.Distance(target.Position) <= 1000 && target.IsValidTarget() && !target.IsZombie && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm")
+                    if (_menu.Item("CR" + hero.NetworkId).GetValue<bool>() && hero.HealthPercent <= _menu.Item("CRH" + hero.NetworkId).GetValue<Slider>().Value)
                     {
-                        CastR(target);
-                    }
-                }
-                {
-                    var target = TargetSelector.GetTarget(1000, TargetSelector.DamageType.Magical);
-                    if (target != null && target.IsValidTarget() && !target.IsZombie && _r.IsReady() && _r.Instance.Name == "ViktorChaosStorm" )
-                    {
-                        if (target.Health <= _r.GetDamage(target)*1.7)
-                        {
-                            CastR(target);
-                        }
-                    }
-                    foreach(var hero in HeroManager.Enemies.Where(x=> x.IsValidTarget(1000) && !x.IsZombie))
-                    {
-
+                        CastR(hero);
                     }
                 }
             }
